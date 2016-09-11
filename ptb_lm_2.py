@@ -61,6 +61,8 @@ import time
 import numpy as np
 import tensorflow as tf
 
+# from mufuru import MuFuRUCell
+
 from tensorflow.models.rnn.ptb import reader
 
 flags = tf.flags
@@ -93,9 +95,9 @@ class PTBModel(object):
     self._targets = tf.placeholder(tf.int32, [batch_size, num_steps])
 
 
-    lstm_cell = tf.nn.rnn_cell.GRUCell(size)
+    recurrent_cell = tf.nn.rnn_cell.GRUCell(size)
 
-    cell = tf.nn.rnn_cell.MultiRNNCell([lstm_cell] * config.num_layers)
+    cell = tf.nn.rnn_cell.MultiRNNCell([recurrent_cell] * config.num_layers)
 
     self._initial_state = cell.zero_state(batch_size, data_type())
 
@@ -128,7 +130,7 @@ class PTBModel(object):
     if not is_training:
       return
 
-    self._lr = tf.Variable(1.0, trainable=False)
+    # self._lr = tf.Variable(1.0, trainable=False)
     tvars = tf.trainable_variables()
     grads, _ = tf.clip_by_global_norm(tf.gradients(cost, tvars),
                                       config.max_grad_norm)
@@ -156,9 +158,9 @@ class PTBModel(object):
   def final_state(self):
     return self._final_state
 
-  @property
-  def lr(self):
-    return self._lr
+  # @property
+  # def lr(self):
+  #   return self._lr
 
   @property
   def train_op(self):
