@@ -145,19 +145,21 @@ class PTBModel(object):
     if not is_training:
       return
 
-    self._lr = tf.Variable(0.0, trainable=False)
+    self._lr = tf.Variable(1.0, trainable=False)
     tvars = tf.trainable_variables()
     grads, _ = tf.clip_by_global_norm(tf.gradients(cost, tvars),
                                       config.max_grad_norm)
-    optimizer = tf.train.GradientDescentOptimizer(self._lr)
+    optimizer = tf.train.AdamOptimizer(learning_rate=0.001, beta1=0.000, beta2=0.999)
+    # optimizer = tf.train.GradientDescentOptimizer(self._lr)
     self._train_op = optimizer.apply_gradients(zip(grads, tvars))
+    # self._train_op = optimizer.minimize(cost, var_list=tf.trainable_variables())
 
-    self._new_lr = tf.placeholder(
-        tf.float32, shape=[], name="new_learning_rate")
-    self._lr_update = tf.assign(self._lr, self._new_lr)
+    # self._new_lr = tf.placeholder(
+    #     tf.float32, shape=[], name="new_learning_rate")
+  #   self._lr_update = tf.assign(self._lr, self._new_lr)
 
-  def assign_lr(self, session, lr_value):
-    session.run(self._lr_update, feed_dict={self._new_lr: lr_value})
+  # def assign_lr(self, session, lr_value):
+  #   session.run(self._lr_update, feed_dict={self._new_lr: lr_value})
 
   @property
   def input_data(self):
@@ -191,19 +193,16 @@ class PTBModel(object):
 class SmallConfig(object):
   """Small config."""
   init_scale = 0.1
-  learning_rate = 1.0
   max_grad_norm = 5
   num_layers = 1
   num_steps = 20
   hidden_size = 200
-  max_epoch = 4
-  max_max_epoch = 13
-  lr_decay = 0.5
   batch_size = 20
   vocab_size = 10000
 
 def run_epoch(session, model, data, eval_op, verbose=False):
   """Runs the model on the given data."""
+  # eval_op is unused
   epoch_size = ((len(data) // model.batch_size) - 1) // model.num_steps
   start_time = time.time()
   costs = 0.0
@@ -212,6 +211,7 @@ def run_epoch(session, model, data, eval_op, verbose=False):
   for step, (x, y) in enumerate(reader.ptb_iterator(data, model.batch_size,
                                                     model.num_steps)):
     fetches = [model.cost, model.final_state, eval_op]
+    # fetches = [model.cost, model.final_state]
     feed_dict = {}
     feed_dict[model.input_data] = x
     feed_dict[model.targets] = y
@@ -253,11 +253,9 @@ def main(_):
 
     tf.initialize_all_variables().run()
 
-    for i in range(config.max_max_epoch):
-      lr_decay = config.lr_decay ** max(i - config.max_epoch, 0.0)
-      m.assign_lr(session, config.learning_rate * lr_decay)
-
-      print("Epoch: %d Learning rate: %.3f" % (i + 1, session.run(m.lr)))
+    MAX_EPOCH = 12
+    for i in range(MAX_EPOCH):
+      print ("Epoch: {0}".format(i+1))
       train_perplexity = run_epoch(session, m, train_data, m.train_op,
                                    verbose=True)
       print("Epoch: %d Train Perplexity: %.3f" % (i + 1, train_perplexity))
