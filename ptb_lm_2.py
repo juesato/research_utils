@@ -92,13 +92,9 @@ class PTBModel(object):
     self._input_data = tf.placeholder(tf.int32, [batch_size, num_steps])
     self._targets = tf.placeholder(tf.int32, [batch_size, num_steps])
 
-    # Slightly better results can be obtained with forget gate biases
-    # initialized to 1 but the hyperparameters of the model would need to be
-    # different than reported in the paper.
+
     lstm_cell = tf.nn.rnn_cell.GRUCell(size)
-    # if is_training and config.keep_prob < 1:
-    #   lstm_cell = tf.nn.rnn_cell.DropoutWrapper(
-    #       lstm_cell, output_keep_prob=config.keep_prob)
+
     cell = tf.nn.rnn_cell.MultiRNNCell([lstm_cell] * config.num_layers)
 
     self._initial_state = cell.zero_state(batch_size, data_type())
@@ -108,19 +104,6 @@ class PTBModel(object):
           "embedding", [vocab_size, size], dtype=data_type())
       inputs = tf.nn.embedding_lookup(embedding, self._input_data)
 
-    # if is_training and config.keep_prob < 1:
-    #   inputs = tf.nn.dropout(inputs, config.keep_prob)
-
-    # Simplified version of tensorflow.models.rnn.rnn.py's rnn().
-    # This builds an unrolled LSTM for tutorial purposes only.
-    # In general, use the rnn() or state_saving_rnn() from rnn.py.
-    #
-    # The alternative version of the code below is:
-    #
-    # from tensorflow.models.rnn import rnn
-    # inputs = [tf.squeeze(input_, [1])
-    #           for input_ in tf.split(1, num_steps, inputs)]
-    # outputs, state = rnn.rnn(cell, inputs, initial_state=self._initial_state)
     outputs = []
     state = self._initial_state
     with tf.variable_scope("RNN"):
@@ -150,16 +133,8 @@ class PTBModel(object):
     grads, _ = tf.clip_by_global_norm(tf.gradients(cost, tvars),
                                       config.max_grad_norm)
     optimizer = tf.train.AdamOptimizer(learning_rate=0.001, beta1=0.000, beta2=0.999)
-    # optimizer = tf.train.GradientDescentOptimizer(self._lr)
+
     self._train_op = optimizer.apply_gradients(zip(grads, tvars))
-    # self._train_op = optimizer.minimize(cost, var_list=tf.trainable_variables())
-
-    # self._new_lr = tf.placeholder(
-    #     tf.float32, shape=[], name="new_learning_rate")
-  #   self._lr_update = tf.assign(self._lr, self._new_lr)
-
-  # def assign_lr(self, session, lr_value):
-  #   session.run(self._lr_update, feed_dict={self._new_lr: lr_value})
 
   @property
   def input_data(self):
@@ -211,14 +186,10 @@ def run_epoch(session, model, data, eval_op, verbose=False):
   for step, (x, y) in enumerate(reader.ptb_iterator(data, model.batch_size,
                                                     model.num_steps)):
     fetches = [model.cost, model.final_state, eval_op]
-    # fetches = [model.cost, model.final_state]
     feed_dict = {}
     feed_dict[model.input_data] = x
     feed_dict[model.targets] = y
-    # for i, (c, h) in enumerate(model.initial_state):
-    #   feed_dict[c] = state[i].c
-    #   feed_dict[h] = state[i].h
-    # print ("FEED DICT", feed_dict)
+
     cost, state, _ = session.run(fetches, feed_dict)
     costs += cost
     iters += model.num_steps
