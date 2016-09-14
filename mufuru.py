@@ -7,7 +7,7 @@ The Multi-Function Recurrent Unit
 """
 
 import tensorflow as tf
-from tensorflow.python.ops.rnn.rnn_cell import *
+from tensorflow.python.ops.rnn_cell import *
 
 _operations = {"max": lambda s, v: tf.maximum(s, v),
                "keep": lambda s, v: s,
@@ -91,7 +91,9 @@ class MuFuRUCell(RNNCell):
                                                       activation_fn=tf.nn.sigmoid,
                                                       biases_initializer=tf.constant_initializer(1.0))
             with vs.variable_scope("Feature"):
-                f = tf.contrib.layers.fully_connected(tf.concat(1, [inputs, r * s]), activation_fn=tf.nn.sigmoid)
+                f = tf.contrib.layers.fully_connected(tf.concat(1, [inputs, r * s]),
+                                                      self._num_units,
+                                                      activation_fn=tf.nn.sigmoid)
             new_op_ctr = None
             if self._op_controller_size > 0:
                 with vs.variable_scope("Op_controller"):
@@ -110,4 +112,4 @@ class MuFuRUCell(RNNCell):
             # include also controller within recurrent state
             return new_c, tf.concat(1, [new_op_ctr, new_c])
         else:
-return new_c, new_c
+            return new_c, new_c
